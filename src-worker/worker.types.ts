@@ -1,7 +1,9 @@
 export interface ProxyData {
-  auth: string
   id: number
   ip: string
+  http_port: number
+  username: string
+  password: string
 }
 
 export interface SiteData {
@@ -9,10 +11,9 @@ export interface SiteData {
   id: number
   // eslint-disable-next-line camelcase
   need_parse_url: number
-  page: string
+  url: string
   // eslint-disable-next-line camelcase
   page_time: number
-  url: string
 }
 
 export interface TargetData {

